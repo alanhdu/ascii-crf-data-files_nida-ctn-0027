@@ -1,0 +1,106 @@
+---
+title: "Opioids"
+author: "Jocelyn Jin"
+date: "November 2, 2017"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##all the forms we use
+```{r cars}
+#demographics
+dem<-read.csv("T_FRDEM.csv")
+#Study Termination (TERM)
+term<-read.csv("T_FRTERM.csv")
+sum(term$TER001==1)
+#Randomization (RAN)--Treatment group
+ran <- read.csv("T_FRRAN.csv")
+#checklist summary
+dsm <- read.csv("T_FRDSM.csv")
+#alchole/urine
+udsab<-read.csv("T_FRUDSAB.csv")
+```
+
+##all the subjects that actually completed the study
+```{r}
+#pick them out
+patdeid<-term[term$TER001==1, "patdeid"]
+patdeid<-data.frame(patdeid)
+dim(patdeid)
+#gender
+patdeid$gender <- dem[patdeid$patdeid, "DEM002"]
+table(patdeid$gender)#1-male, 2-female
+#treatment group
+n<-nrow(patdeid)
+n
+patdeid$group <- rep(NA, n)
+for(i in 1:n){
+  patdeid$group[i]<-ran[ran$patdeid==patdeid$patdeid[i], "INF004"]
+}
+table(patdeid$group)#1-Buprenorphine/Naloxone, 2-Methadone
+```
+#Dependence checklist
+```{r}
+patdeid$Opiates <- rep(NA, n)
+patdeid$Alcohol <- rep(NA, n)
+patdeid$Amphetamines <- rep(NA, n)
+patdeid$Cannabis <- rep(NA, n)
+patdeid$Cocaine <- rep(NA, n)
+patdeid$Sedatives <- rep(NA, n)
+for(i in 1:n){
+  patdeid$Opiates[i]<-dsm[dsm$patdeid==patdeid$patdeid[i], "DSMOPI"]
+  patdeid$Alcohol[i]<-dsm[dsm$patdeid==patdeid$patdeid[i], "DSMAL"]
+  patdeid$Amphetamines[i]<-dsm[dsm$patdeid==patdeid$patdeid[i], "DSMAM"]
+  patdeid$Cannabis[i]<-dsm[dsm$patdeid==patdeid$patdeid[i], "DSMCA"]
+  patdeid$Cocaine[i]<-dsm[dsm$patdeid==patdeid$patdeid[i], "DSMCO"]
+  patdeid$Sedatives[i]<-dsm[dsm$patdeid==patdeid$patdeid[i], "DSMSE"]
+}#1-Dependence, 2-Abuse 3-No diagnosis
+table(patdeid$Amphetamines)
+table(patdeid$Opiates)
+table(patdeid$Alcohol)
+table(patdeid$Cannabis)
+table(patdeid$Cocaine)
+table(patdeid$Sedatives)
+```
+
+#Medical history
+```{r}
+mdh <- read.csv("T_FRMDH.csv")
+dim(mdh)
+mdh <- data.frame(mdh$patdeid, mdh$MDH001, mdh$MDH002, mdh$MDH003, mdh$MDH004, mdh$MDH005, 
+             mdh$MDH006, mdh$MDH007, mdh$MDH008,mdh$MDH009,mdh$MDH010,
+             mdh$MDH011A,mdh$MDH011B, mdh$MDH012, mdh$MDH013,mdh$MDH014, 
+             mdh$MDH015, mdh$MDH016, mdh$MDH017)
+dim(mdh)
+mdh2<-mdh[1,]
+for(i in 2:n){
+  mdh2[i,]<-mdh[mdh$mdh.patdeid==patdeid$patdeid[i],]
+}
+dim(mdh2)
+mdh2<-mdh2[,-1]
+patdeid<-cbind(patdeid,mdh2)
+table(patdeid$mdh.MDH001)
+table(patdeid$mdh.MDH002)
+table(patdeid$mdh.MDH003)
+table(patdeid$mdh.MDH004)
+table(patdeid$mdh.MDH005)
+table(patdeid$mdh.MDH006)
+table(patdeid$mdh.MDH007)
+table(patdeid$mdh.MDH008)
+table(patdeid$mdh.MDH009)
+table(patdeid$mdh.MDH010)
+table(patdeid$mdh.MDH011A)
+table(patdeid$mdh.MDH011B)
+table(patdeid$mdh.MDH012)
+table(patdeid$mdh.MDH013)
+table(patdeid$mdh.MDH014)
+table(patdeid$mdh.MDH015)
+table(patdeid$mdh.MDH016)
+table(patdeid$mdh.MDH017)
+dim(patdeid)
+```
+
+

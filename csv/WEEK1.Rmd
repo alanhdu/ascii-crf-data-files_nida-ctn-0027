@@ -1,0 +1,118 @@
+---
+title: "Week1"
+author: "Jocelyn Jin"
+date: "November 9, 2017"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#prepare data
+
+```{r}
+tests<-read.csv("T_FRUDSAB.csv")
+test<-tests[,c("patdeid","VISIT", "UDS011")]
+id<-read.csv("RANDOM.csv")
+reg.data<-data.frame(id$patdeid)
+reg.data$week1<-rep(NA, nrow(reg.data))
+reg.data$week2<-rep(NA, nrow(reg.data))
+reg.data$week3<-rep(NA, nrow(reg.data))
+reg.data$week4<-rep(NA, nrow(reg.data))
+reg.data$week21<-rep(NA, nrow(reg.data))
+reg.data$week22<-rep(NA, nrow(reg.data))
+reg.data$week23<-rep(NA, nrow(reg.data))
+reg.data$week24<-rep(NA, nrow(reg.data))
+i<-7
+for(i in 1:nrow(reg.data)){
+  reg.data$week1[i]<-ifelse(
+    length(test[test$patdeid==reg.data$id.patdeid[i]&test$VISIT=="WK1","UDS011"])!=0,
+           test[test$patdeid==reg.data$id.patdeid[i]&test$VISIT=="WK1", "UDS011"], NA)
+  reg.data$week2[i]<-ifelse(
+    length(test[test$patdeid==reg.data$id.patdeid[i]&test$VISIT=="WK2","UDS011"])!=0,
+           test[test$patdeid==reg.data$id.patdeid[i]&test$VISIT=="WK2", "UDS011"], NA)
+  reg.data$week3[i]<-ifelse(
+    length(test[test$patdeid==reg.data$id.patdeid[i]&test$VISIT=="WK3","UDS011"])!=0,
+           test[test$patdeid==reg.data$id.patdeid[i]&test$VISIT=="WK3", "UDS011"], NA)
+  reg.data$week4[i]<-ifelse(
+    length(test[test$patdeid==reg.data$id.patdeid[i]&test$VISIT=="WK4","UDS011"])!=0,
+           test[test$patdeid==reg.data$id.patdeid[i]&test$VISIT=="WK4", "UDS011"], NA)
+  reg.data$week21[i]<-ifelse(
+    length(test[test$patdeid==reg.data$id.patdeid[i]&test$VISIT=="WK21","UDS011"])!=0,
+           test[test$patdeid==reg.data$id.patdeid[i]&test$VISIT=="WK21", "UDS011"], NA)
+  reg.data$week22[i]<-ifelse(
+    length(test[test$patdeid==reg.data$id.patdeid[i]&test$VISIT=="WK22","UDS011"])!=0,
+           test[test$patdeid==reg.data$id.patdeid[i]&test$VISIT=="WK22", "UDS011"], NA)
+  reg.data$week23[i]<-ifelse(
+    length(test[test$patdeid==reg.data$id.patdeid[i]&test$VISIT=="WK23","UDS011"])!=0,
+           test[test$patdeid==reg.data$id.patdeid[i]&test$VISIT=="WK23", "UDS011"], NA)
+  reg.data$week24[i]<-ifelse(
+    length(test[test$patdeid==reg.data$id.patdeid[i]&test$VISIT=="WK24","UDS011"])!=0,
+           test[test$patdeid==reg.data$id.patdeid[i]&test$VISIT=="WK24", "UDS011"], NA)
+}
+#remove empty rows
+sapply(reg.data, function(x) sum(is.na(x)))
+data <- reg.data[-which(apply(reg.data[,2:5],1,function(x)all(is.na(x)))),]
+sapply(data, function(x) sum(is.na(x)))
+```
+
+#lable the sample
+```{r}
+data$lab<-rep(NA, nrow(data))
+i<-2
+for(i in 1:nrow(data)){
+  data$lab[i]<-ifelse(sum(is.na(data[i,6:9])), 1,
+          ifelse(sum(data[i,6:9])!=0,1,0))
+  }
+table(data$lab)
+```
+#EDA
+```{r}
+library(Amelia)
+missmap(data, main = "Missing values vs observed")
+#cross search in randomization form
+ran<-read.csv("T_FRRAN.csv")
+```
+##logistic regression
+```{r}
+#data partition
+data$group<-sample(c(1,1,1,2), size=nrow(data), replace = TRUE)
+train <- data[data$group==1,]
+test <- data[data$group==2,]
+#model fitting
+model <- glm(lab~week1+week2+week3+week4,family=binomial(link='logit'),data=train)
+summary(model)
+predict <- predict(model, newdata=train, type = 'response')
+```
+#ROC Curve
+```{r}
+library(ROCR)
+#train data
+ROCRpred <- prediction(predict, train$lab)
+ROCRperf <- performance(ROCRpred, 'tpr','fpr')
+plot(ROCRperf, colorize = TRUE, text.adj = c(-0.2,1.7))
+#test data
+tpredict<-predict(model, newdata=test, type = 'response')
+tROCRpred <- prediction(tpredict, test$lab)
+tROCRperf <- performance(tROCRpred, 'tpr','fpr')
+plot(tROCRperf, colorize = TRUE, text.adj = c(-0.2,1.7))
+```
+
+#k fold cross validation
+```{r}
+library(caret)
+#remove rows with missing values
+sapply(data, function(x) sum(is.na(x)))
+ctrl <- trainControl(method = "cv", number = 10, savePredictions = T)
+data$lab<-as.factor(data$lab)
+glm_fit <- train(lab~week1+week2+week3+week4, 
+                    data = data,
+                    method = "glm",
+                    family=binomial(link='logit'),
+                    trControl = ctrl,
+                    na.action='na.omit')
+glm_fit
+glm_fit$finalModel
+head(glm_fit$pred)
+```
